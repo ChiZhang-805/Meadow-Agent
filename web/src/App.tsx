@@ -11,6 +11,7 @@ import { GroceryStageTracker } from "./components/GroceryStageTracker";
 import { OrderHistoryDialog, stageLabel } from "./components/OrderHistoryDialog";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { VoiceButton } from "./components/VoiceButton";
+import agentIconUrl from "./assets/agent_icon.png";
 import { createRealtimeEventHandler } from "./realtime/eventHandlers";
 import { startRealtimeSession, type RealtimeSessionHandle } from "./realtime/startRealtimeSession";
 import { handleRealtimeToolCall, sendToolOutput, summarizePreview } from "./realtime/toolBridge";
@@ -530,7 +531,7 @@ export default function App() {
 
       <header className="app-header">
         <div className="brand-mark" aria-hidden="true">
-          <img src="/agent_icon.png" alt="" />
+          <img src={agentIconUrl} alt="" />
         </div>
         <div>
           <h1>Meadow Agent 麦豆</h1>
