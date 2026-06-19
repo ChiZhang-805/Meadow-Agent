@@ -113,6 +113,28 @@ cd web
 npm run build
 ```
 
+## Render Blueprint 部署
+
+仓库根目录已经包含 `render.yaml`，可以在 Render 里用 Blueprint 一次创建两个公开服务：
+
+- `meadow-agent-api`：FastAPI 后端，健康检查为 `/api/health`。
+- `meadow-agent-web`：Vite 静态站点，默认公开地址为 `https://meadow-agent-web.onrender.com`。
+
+操作步骤：
+
+1. 登录 Render，选择 Blueprint/New Blueprint。
+2. 连接 GitHub 仓库 `ChiZhang-805/Meadow-Agent`。
+3. Render 读取根目录 `render.yaml` 后，填写 `OPENAI_API_KEY`；如需高德地图地址搜索，也填写 `AMAP_API_KEY`。
+4. 创建 Blueprint，等待后端和前端都部署完成。
+5. 打开 `https://meadow-agent-web.onrender.com`。
+
+如果 Render 给服务生成了不同域名，请在 Render 控制台同步修改：
+
+- 前端 `VITE_API_BASE_URL`：改成实际后端 URL。
+- 后端 `APP_ORIGIN` 和 `CORS_ALLOWED_ORIGINS`：改成实际前端 URL。
+
+生产部署中 `APP_ENV=production`，侧边栏不会允许把 API Key 写入后端内存；请使用 Render 环境变量配置密钥。
+
 可选真实 OpenAI Realtime token smoke test 默认跳过。确认 `.env` 中有真实 key 后再运行：
 
 ```bash

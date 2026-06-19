@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     app_origin: str = "http://localhost:5173"
+    cors_allowed_origins: str = ""
     demo_user_id: str = "demo-user"
 
     openai_api_key: str = ""
@@ -27,6 +28,15 @@ class Settings(BaseSettings):
     single_order_limit_cents: int = 5000
     daily_budget_cents: int = 10000
     confirmation_token_ttl_seconds: int = 300
+
+    def cors_origin_list(self) -> list[str]:
+        origins = [
+            self.app_origin,
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+        origins.extend(origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip())
+        return list(dict.fromkeys(origin for origin in origins if origin))
 
 
 @lru_cache

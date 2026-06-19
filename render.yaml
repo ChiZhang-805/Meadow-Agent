@@ -1,0 +1,51 @@
+services:
+  - type: web
+    name: meadow-agent-api
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: cd backend && pip install -e .
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_ENV
+        value: production
+      - key: APP_ORIGIN
+        value: https://meadow-agent-web.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://meadow-agent-web.onrender.com
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AMAP_API_KEY
+        sync: false
+      - key: OPENAI_REALTIME_MODEL
+        value: gpt-realtime-2
+      - key: OPENAI_REALTIME_VOICE
+        value: marin
+      - key: GROCERY_PROVIDER
+        value: mock
+      - key: SINGLE_ORDER_LIMIT_CENTS
+        value: "5000"
+      - key: DAILY_BUDGET_CENTS
+        value: "10000"
+      - key: CONFIRMATION_TOKEN_TTL_SECONDS
+        value: "300"
+
+  - type: web
+    name: meadow-agent-web
+    runtime: static
+    buildCommand: cd web && npm ci && npm run build
+    staticPublishPath: web/dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: VITE_API_BASE_URL
+        value: https://meadow-agent-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

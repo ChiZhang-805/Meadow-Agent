@@ -1,4 +1,4 @@
-import { apiPost } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export interface ExternalConfigItem {
   name: string;
@@ -13,12 +13,7 @@ export interface ConfigStatus {
 }
 
 export async function getConfigStatus(): Promise<ConfigStatus> {
-  const response = await fetch("/api/dev/config/status");
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Failed to load config status: ${response.status} ${detail}`);
-  }
-  return response.json() as Promise<ConfigStatus>;
+  return apiGet<ConfigStatus>("/api/dev/config/status");
 }
 
 export async function saveOpenAIKey(openaiApiKey: string): Promise<{ configured: boolean }> {

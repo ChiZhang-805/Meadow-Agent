@@ -1,3 +1,5 @@
+import { apiUrl } from "../api/client";
+
 export interface RealtimeSessionHandle {
   pc: RTCPeerConnection;
   dc: RTCDataChannel;
@@ -27,7 +29,7 @@ export async function startRealtimeSession(params: {
   onRemoteAudioStream: (stream: MediaStream) => void;
   onDataChannelOpen?: () => void;
 }): Promise<RealtimeSessionHandle> {
-  const tokenResponse = await fetch("/api/realtime/token", {
+  const tokenResponse = await fetch(apiUrl("/api/realtime/token"), {
     method: "POST",
     headers: { "X-User-Id": params.userId }
   });
