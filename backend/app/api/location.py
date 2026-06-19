@@ -1,0 +1,104 @@
+from typing import Any
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from app.services.profile_service import DeliveryAddress, InMemoryProfileService, get_profile_service
+from app.services.runtime_secrets import RuntimeSecrets, get_runtime_secrets
+from app.settings import Settings, get_settings
+
+router = APIRouter(prefix="/api/location", tags=["location"])
+
+
+class AddressSuggestRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=80)
+    city: str | None = Field(default=None, max_length=40)
+
+
+class AddressSuggestion(BaseModel):
+    id: str | None = None
+    name: str
+    district: str | None = None
+    address: str | None = None
+    location: str | None = None
+    adcode: str | None = None
+
+
+class SaveAddressRequest(BaseModel):
+    user_id: str
+    name: str
+    district: str | None = None
+    address: str | None = None
+    location: str | None = None
+    detail: str | None = Field(default=None, max_length=120)
+
+
+@router.post("/amap/address_suggestions")
+async def get_amap_address_suggestions(
+    payload: AddressSuggestRequest,
+    settings: Settings = Depends(get_settings),
+    runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
+) -> dict[str, Any]:
+    amap_api_key = runtime_secrets.get_amap_api_key(settings)
+    if not amap_api_key:
+        raise HTTPException(status_code=500, detail="AMAP_API_KEY is not configured")
+
+    params = {
+        "key": amap_api_key,
+        "keywords": payload.query.strip(),
+        "datatype": "all",
+        "output": "json",
+    }
+    if payload.city:
+        params["city"] = payload.city.strip()
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get("https://restapi.amap.com/v3/assistant/inputtips", params=params)
+
+    if response.status_code >= 400:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    data = response.json()
+    if data.get("status") != "1":
+        raise HTTPException(status_code=502, detail=data.get("info") or "AMap inputtips failed")
+
+    tips = data.get("tips") if isinstance(data.get("tips"), list) else []
+    suggestions = [normalize_tip(tip) for tip in tips[:8] if isinstance(tip, dict)]
+    return {"suggestions": [suggestion.model_dump() for suggestion in suggestions]}
+
+
+@router.post("/address")
+async def save_delivery_address(
+    payload: SaveAddressRequest,
+    profile_service: InMemoryProfileService = Depends(get_profile_service),
+) -> dict[str, Any]:
+    address = profile_service.set_delivery_address(
+        DeliveryAddress(
+            user_id=payload.user_id,
+            name=payload.name,
+            district=payload.district,
+            address=payload.address,
+            location=payload.location,
+            detail=payload.detail,
+        )
+    )
+    return {"address": address.__dict__}
+
+
+def normalize_tip(tip: dict[str, Any]) -> AddressSuggestion:
+    return AddressSuggestion(
+        id=string_or_none(tip.get("id")),
+        name=string_or_none(tip.get("name")) or "",
+        district=string_or_none(tip.get("district")),
+        address=string_or_none(tip.get("address")),
+        location=string_or_none(tip.get("location")),
+        adcode=string_or_none(tip.get("adcode")),
+    )
+
+
+def string_or_none(value: Any) -> str | None:
+    if value is None or value == []:
+        return None
+    text = str(value).strip()
+    return text or None

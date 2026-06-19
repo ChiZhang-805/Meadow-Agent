@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: meadow_postgres
+    environment:
+      POSTGRES_USER: elderly
+      POSTGRES_PASSWORD: elderly_pass
+      POSTGRES_DB: elderly_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: meadow_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

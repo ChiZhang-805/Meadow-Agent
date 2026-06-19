@@ -1,0 +1,1 @@
+"""Grocery provider adapters."""

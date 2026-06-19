@@ -1,0 +1,20 @@
+.env
+*.env
+
+backend/.venv/
+backend/.pytest_cache/
+backend/*.egg-info/
+backend/**/__pycache__/
+backend/**/*.pyc
+
+web/node_modules/
+web/dist/
+web/.vite/
+web/*.tsbuildinfo
+
+# Local scratch image exports; the app asset lives in web/public/.
+/agent_icon.png
+/elder_icon.png
+
+.DS_Store
+Thumbs.db
