@@ -11,6 +11,13 @@ def test_rejects_risky_grocery_keywords() -> None:
     assert "药品" in decision.reason
 
 
+def test_allows_yam_even_though_name_contains_yao() -> None:
+    policy = SafetyPolicy(single_order_limit_cents=5000, daily_budget_cents=10000)
+    decision = policy.evaluate_search_request([GroceryItem(name="山药", quantity="两根")])
+
+    assert decision.allowed
+
+
 def test_large_preview_requires_caregiver_confirmation() -> None:
     policy = SafetyPolicy(single_order_limit_cents=5000, daily_budget_cents=10000)
     preview = OrderPreview(

@@ -36,6 +36,7 @@ interface GroceryState {
   clearPreview: () => void;
   setOrder: (order: OrderResult, preview: OrderPreview) => void;
   setStage: (stage: GroceryStage) => void;
+  setOrderStage: (orderId: string, stage: GroceryStage) => void;
   cancelOrder: (orderId: string) => void;
   selectHistoryOrder: (orderId?: string) => void;
   cancelFlow: () => void;
@@ -50,14 +51,18 @@ export const useGroceryStore = create<GroceryState>((set) => ({
     set({
       options,
       currentPreview: undefined,
-      lastOrder: undefined,
       pendingConfirmation: false,
       selectedHistoryOrderId: undefined,
       stage: options.length > 0 ? "options_ready" : "searching"
     }),
   setPreview: (preview) =>
     set({ currentPreview: preview, pendingConfirmation: true, selectedHistoryOrderId: undefined, stage: "preview_ready" }),
-  clearPreview: () => set({ currentPreview: undefined, pendingConfirmation: false }),
+  clearPreview: () =>
+    set((state) => ({
+      currentPreview: undefined,
+      pendingConfirmation: false,
+      stage: state.options.length > 0 ? "options_ready" : "idle"
+    })),
   setOrder: (order, preview) =>
     set((state) => {
       const now = new Date().toISOString();
@@ -76,6 +81,7 @@ export const useGroceryStore = create<GroceryState>((set) => ({
         updatedAt: now
       };
       return {
+        options: [],
         lastOrder: order,
         currentPreview: undefined,
         pendingConfirmation: false,
@@ -87,18 +93,16 @@ export const useGroceryStore = create<GroceryState>((set) => ({
         )
       };
     }),
-  setStage: (stage) =>
+  setStage: (stage) => set({ stage }),
+  setOrderStage: (orderId, stage) =>
     set((state) => {
       const now = new Date().toISOString();
       return {
-        stage,
-        orderHistory: state.lastOrder
-          ? state.orderHistory.map((item) =>
-              item.order.order_id === state.lastOrder?.order_id
-                ? { ...item, stage, stageTimes: { ...item.stageTimes, [stage]: now }, updatedAt: now }
-                : item
-            )
-          : state.orderHistory
+        orderHistory: state.orderHistory.map((item) =>
+          item.order.order_id === orderId
+            ? { ...item, stage, stageTimes: { ...item.stageTimes, [stage]: now }, updatedAt: now }
+            : item
+        )
       };
     }),
   cancelOrder: (orderId) =>

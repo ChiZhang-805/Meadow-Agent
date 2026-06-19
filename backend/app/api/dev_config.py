@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.services.profile_service import InMemoryProfileService, get_profile_service
@@ -23,16 +23,18 @@ class AMapKeyRequest(BaseModel):
 
 @router.get("/status")
 async def get_config_status(
+    x_user_id: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
     profile_service: InMemoryProfileService = Depends(get_profile_service),
 ) -> dict:
+    user_id = x_user_id or settings.demo_user_id
     items = build_external_config_status(settings, runtime_secrets)
     items.insert(
         2,
         RuntimeSecretStatus(
             name="地址",
-            configured=profile_service.get_delivery_address(settings.demo_user_id) is not None,
+            configured=profile_service.get_delivery_address(user_id) is not None,
             source="profile",
             required_for_mvp=True,
         ),

@@ -1,12 +1,28 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GroceryItem(BaseModel):
-    name: str
-    quantity: str | None = None
+    name: str = Field(min_length=1, max_length=40)
+    quantity: str | None = Field(default=None, max_length=40)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("item name cannot be blank")
+        return text
+
+    @field_validator("quantity")
+    @classmethod
+    def normalize_quantity(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
 
 class GroceryOption(BaseModel):

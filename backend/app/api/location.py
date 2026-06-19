@@ -2,7 +2,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.services.profile_service import DeliveryAddress, InMemoryProfileService, get_profile_service
 from app.services.runtime_secrets import RuntimeSecrets, get_runtime_secrets
@@ -14,6 +14,22 @@ router = APIRouter(prefix="/api/location", tags=["location"])
 class AddressSuggestRequest(BaseModel):
     query: str = Field(min_length=1, max_length=80)
     city: str | None = Field(default=None, max_length=40)
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("query cannot be blank")
+        return text
+
+    @field_validator("city")
+    @classmethod
+    def normalize_city(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
 
 class AddressSuggestion(BaseModel):
@@ -27,11 +43,27 @@ class AddressSuggestion(BaseModel):
 
 class SaveAddressRequest(BaseModel):
     user_id: str
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     district: str | None = None
     address: str | None = None
     location: str | None = None
     detail: str | None = Field(default=None, max_length=120)
+
+    @field_validator("user_id", "name")
+    @classmethod
+    def normalize_required_text(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("value cannot be blank")
+        return text
+
+    @field_validator("district", "address", "location", "detail")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
 
 @router.post("/amap/address_suggestions")
@@ -46,12 +78,12 @@ async def get_amap_address_suggestions(
 
     params = {
         "key": amap_api_key,
-        "keywords": payload.query.strip(),
+        "keywords": payload.query,
         "datatype": "all",
         "output": "json",
     }
     if payload.city:
-        params["city"] = payload.city.strip()
+        params["city"] = payload.city
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get("https://restapi.amap.com/v3/assistant/inputtips", params=params)

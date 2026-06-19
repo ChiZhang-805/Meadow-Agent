@@ -52,6 +52,16 @@ def test_order_flow_requires_confirmation_token() -> None:
         assert reused.status_code == 403
 
 
+def test_blank_grocery_item_name_is_rejected() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/tools/search_grocery_options",
+            json={"user_id": "demo-user", "items": [{"name": "   ", "quantity": "一份"}]},
+        )
+
+    assert response.status_code == 422
+
+
 def test_order_preview_uses_saved_delivery_address() -> None:
     with make_client() as client:
         address_response = client.post(

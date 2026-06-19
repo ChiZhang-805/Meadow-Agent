@@ -18,17 +18,18 @@ import { handleRealtimeToolCall, sendToolOutput, summarizePreview } from "./real
 import { useEmotionStore } from "./store/useEmotionStore";
 import { type GroceryStage, type OrderHistoryRecord, useGroceryStore } from "./store/useGroceryStore";
 import { useVoiceStore } from "./store/useVoiceStore";
+import { getSessionUserId } from "./user/sessionUser";
 
-const USER_ID = "demo-user";
 type InputGateState = "open" | "paused" | "suspended";
 const LOCAL_AUDIO_SILENCE_MS = 1400;
 const NO_AUDIO_RESPONSE_FALLBACK_MS = 2800;
 const REMOTE_AUDIO_RMS_THRESHOLD = 0.012;
 
 export default function App() {
+  const userId = useMemo(() => getSessionUserId(), []);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sessionRef = useRef<RealtimeSessionHandle | null>(null);
-  const groceryTimersRef = useRef<number[]>([]);
+  const groceryTimersRef = useRef<Map<string, number[]>>(new Map());
   const assistantSpeakingRef = useRef(false);
   const assistantUnmuteTimerRef = useRef<number | null>(null);
   const inputGateRef = useRef<InputGateState>("open");
@@ -75,6 +76,7 @@ export default function App() {
     clearPreview,
     setOrder,
     setStage,
+    setOrderStage,
     cancelOrder,
     selectHistoryOrder,
     cancelFlow
@@ -90,7 +92,7 @@ export default function App() {
 
   useEffect(() => {
     if (!lastOrder) return;
-    runGroceryStageSimulation();
+    runGroceryStageSimulation(lastOrder.order_id);
   }, [lastOrder?.order_id]);
 
   useEffect(() => {
@@ -110,7 +112,7 @@ export default function App() {
         onToolCall: async (call) => {
           addEventLog(`tool:${call.name}`);
           try {
-            const output = await handleRealtimeToolCall(call, USER_ID);
+            const output = await handleRealtimeToolCall(call, userId);
             const channel = sessionRef.current?.dc;
             if (channel) {
               suspendInputForAssistant();
@@ -122,7 +124,7 @@ export default function App() {
           }
         }
       }),
-    [addEventLog, addTranscriptBubble, appendAiReplyDelta, finishAiReplyBubble]
+    [addEventLog, addTranscriptBubble, appendAiReplyDelta, finishAiReplyBubble, userId]
   );
 
   async function start() {
@@ -131,7 +133,7 @@ export default function App() {
     clearConversation();
     try {
       const session = await startRealtimeSession({
-        userId: USER_ID,
+        userId,
         onEvent: realtimeEventHandler,
         onRemoteAudioStream: (stream) => {
           if (audioRef.current) {
@@ -189,7 +191,7 @@ export default function App() {
       return;
     }
 
-    if (isCancelOrderIntent(text)) {
+    if (isCancelOrderIntent(text) || (isGenericCancelOrderIntent(text) && getActiveOrders().length > 0)) {
       addEventLog("intent.cancel_order");
       requestCancelOrderFromVoice(text);
     }
@@ -238,9 +240,7 @@ export default function App() {
   function confirmCancelOrder(orderId: string) {
     const record = useGroceryStore.getState().orderHistory.find((item) => item.order.order_id === orderId);
     if (!record) return;
-    if (useGroceryStore.getState().lastOrder?.order_id === orderId) {
-      clearGroceryTimers();
-    }
+    clearGroceryTimers(orderId);
     cancelOrder(orderId);
     setCancelDialogOpen(false);
     setCancelTargetOrderId(undefined);
@@ -256,7 +256,7 @@ export default function App() {
 
   async function previewOption(optionId: string) {
     try {
-      const preview = await createOrderPreview({ user_id: USER_ID, option_id: optionId });
+      const preview = await createOrderPreview({ user_id: userId, option_id: optionId });
       setPreview(preview);
       sendTextToAssistant(`${summarizePreview(preview)} 请等待我在屏幕上确认。`);
     } catch (error) {
@@ -271,11 +271,11 @@ export default function App() {
     setStage("ordering");
     try {
       const confirmationToken = await issueConfirmationToken({
-        user_id: USER_ID,
+        user_id: userId,
         preview_id: preview.preview_id
       });
       const order = await submitOrder({
-        user_id: USER_ID,
+        user_id: userId,
         preview_id: preview.preview_id,
         confirmation_token: confirmationToken
       });
@@ -293,17 +293,28 @@ export default function App() {
         ].join("")
       );
     } catch (error) {
+      setStage("preview_ready");
       setError(error instanceof Error ? error.message : String(error));
     } finally {
       setBusyConfirming(false);
     }
   }
 
-  function clearGroceryTimers() {
-    for (const timer of groceryTimersRef.current) {
-      window.clearTimeout(timer);
+  function clearGroceryTimers(orderId?: string) {
+    if (orderId) {
+      for (const timer of groceryTimersRef.current.get(orderId) ?? []) {
+        window.clearTimeout(timer);
+      }
+      groceryTimersRef.current.delete(orderId);
+      return;
     }
-    groceryTimersRef.current = [];
+
+    for (const timers of groceryTimersRef.current.values()) {
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+    }
+    groceryTimersRef.current.clear();
   }
 
   function clearAssistantUnmuteTimer() {
@@ -360,8 +371,10 @@ export default function App() {
   }
 
   function sendTextToAssistant(text: string) {
+    const session = sessionRef.current;
+    if (!session || session.dc.readyState !== "open") return;
     beginAssistantOutputGate();
-    sessionRef.current?.sendText(text);
+    session.sendText(text);
   }
 
   function syncOrderMemoryToAssistant(force = false) {
@@ -500,17 +513,18 @@ export default function App() {
     return false;
   }
 
-  function runGroceryStageSimulation() {
-    clearGroceryTimers();
+  function runGroceryStageSimulation(orderId: string) {
+    clearGroceryTimers(orderId);
     const schedule = [
       ["accepted", 1400],
       ["at_store", 3200],
       ["delivering", 5600],
       ["delivered", 8600]
     ] as const;
-    groceryTimersRef.current = schedule.map(([nextStage, delay]) =>
-      window.setTimeout(() => setStage(nextStage), delay)
+    const timers = schedule.map(([nextStage, delay]) =>
+      window.setTimeout(() => setOrderStage(orderId, nextStage), delay)
     );
+    groceryTimersRef.current.set(orderId, timers);
   }
 
   const connected = status === "connected" || status === "starting";
@@ -527,7 +541,7 @@ export default function App() {
   return (
     <main className="app-shell">
       <audio ref={audioRef} autoPlay />
-      <ConfigSidebar open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ConfigSidebar open={settingsOpen} userId={userId} onClose={() => setSettingsOpen(false)} />
 
       <header className="app-header">
         <div className="brand-mark" aria-hidden="true">
@@ -555,7 +569,7 @@ export default function App() {
             <div className="button-grid">
               <VoiceButton label="开始说话" icon={Mic} tone="primary" disabled={connected} onClick={start} />
               <VoiceButton label="停止说话" icon={Square} tone="neutral" disabled={!connected} onClick={stopTalking} />
-              <VoiceButton label="再说一遍" icon={Repeat2} tone="neutral" disabled={!connected} onClick={replay} />
+              <VoiceButton label="再说一遍" icon={Repeat2} tone="neutral" disabled={status !== "connected"} onClick={replay} />
               <VoiceButton label="取消订单" icon={X} tone="danger" onClick={cancel} />
             </div>
             {lastError ? <p className="error-text">{lastError}</p> : null}

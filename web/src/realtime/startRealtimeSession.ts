@@ -47,127 +47,134 @@ export async function startRealtimeSession(params: {
   }
 
   const pc = new RTCPeerConnection();
+  let localStream: MediaStream | null = null;
 
-  pc.ontrack = (event) => {
-    const [stream] = event.streams;
-    if (stream) params.onRemoteAudioStream(stream);
-  };
+  try {
+    pc.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (stream) params.onRemoteAudioStream(stream);
+    };
 
-  const localStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    },
-    video: false
-  });
-
-  const [localAudioTrack] = localStream.getAudioTracks();
-  const audioSender = localAudioTrack ? pc.addTrack(localAudioTrack, localStream) : null;
-  let microphoneAttached = true;
-  let microphoneSwitchId = 0;
-
-  const dc = pc.createDataChannel("oai-events");
-  dc.addEventListener("open", () => {
-    sendTurnDetectionUpdate(dc, NO_INTERRUPT_TURN_DETECTION);
-    params.onDataChannelOpen?.();
-  });
-  dc.addEventListener("message", (event) => {
-    try {
-      params.onEvent(JSON.parse(event.data));
-    } catch {
-      params.onEvent({ type: "client.unparsed_event", raw: String(event.data) });
-    }
-  });
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
-    method: "POST",
-    body: offer.sdp,
-    headers: {
-      Authorization: `Bearer ${ephemeralKey}`,
-      "Content-Type": "application/sdp"
-    }
-  });
-
-  if (!sdpResponse.ok) {
-    const detail = await sdpResponse.text();
-    throw new Error(`Realtime SDP failed: ${sdpResponse.status} ${detail}`);
-  }
-
-  await pc.setRemoteDescription({
-    type: "answer",
-    sdp: await sdpResponse.text()
-  });
-
-  function setMicrophoneAttached(attached: boolean) {
-    localStream.getAudioTracks().forEach((track) => {
-      track.enabled = attached;
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      },
+      video: false
     });
 
-    if (!audioSender || microphoneAttached === attached) return;
-    microphoneAttached = attached;
-    const switchId = ++microphoneSwitchId;
-    void audioSender.replaceTrack(attached ? localAudioTrack : null).catch(() => {
-      if (switchId === microphoneSwitchId) {
-        microphoneAttached = !attached;
+    const [localAudioTrack] = localStream.getAudioTracks();
+    const audioSender = localAudioTrack ? pc.addTrack(localAudioTrack, localStream) : null;
+    let microphoneAttached = true;
+    let microphoneSwitchId = 0;
+
+    const dc = pc.createDataChannel("oai-events");
+    dc.addEventListener("open", () => {
+      sendTurnDetectionUpdate(dc, NO_INTERRUPT_TURN_DETECTION);
+      params.onDataChannelOpen?.();
+    });
+    dc.addEventListener("message", (event) => {
+      try {
+        params.onEvent(JSON.parse(event.data));
+      } catch {
+        params.onEvent({ type: "client.unparsed_event", raw: String(event.data) });
       }
     });
-  }
 
-  function clearInputAudioBuffer() {
-    if (dc.readyState !== "open") return;
-    dc.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
-  }
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
 
-  function pauseInputCapture() {
-    setMicrophoneAttached(false);
-  }
-
-  function suspendInput(options: { clearBuffer?: boolean } = {}) {
-    pauseInputCapture();
-    sendTurnDetectionUpdate(dc, null);
-    if (options.clearBuffer ?? true) {
-      clearInputAudioBuffer();
-    }
-  }
-
-  function resumeInput() {
-    clearInputAudioBuffer();
-    sendTurnDetectionUpdate(dc, NO_INTERRUPT_TURN_DETECTION);
-    setMicrophoneAttached(true);
-  }
-
-  return {
-    pc,
-    dc,
-    localStream,
-    stop() {
-      localStream.getTracks().forEach((track) => track.stop());
-      pc.close();
-    },
-    setInputMuted(muted: boolean) {
-      if (muted) {
-        pauseInputCapture();
-      } else {
-        resumeInput();
+    const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${ephemeralKey}`,
+        "Content-Type": "application/sdp"
       }
-    },
-    pauseInputCapture,
-    suspendInput,
-    resumeInput,
-    clearInputAudioBuffer,
-    sendContext(text: string) {
-      sendUserTextItem(dc, text);
-    },
-    sendText(text: string) {
+    });
+
+    if (!sdpResponse.ok) {
+      const detail = await sdpResponse.text();
+      throw new Error(`Realtime SDP failed: ${sdpResponse.status} ${detail}`);
+    }
+
+    await pc.setRemoteDescription({
+      type: "answer",
+      sdp: await sdpResponse.text()
+    });
+
+    function setMicrophoneAttached(attached: boolean) {
+      localStream?.getAudioTracks().forEach((track) => {
+        track.enabled = attached;
+      });
+
+      if (!audioSender || microphoneAttached === attached) return;
+      microphoneAttached = attached;
+      const switchId = ++microphoneSwitchId;
+      void audioSender.replaceTrack(attached ? localAudioTrack : null).catch(() => {
+        if (switchId === microphoneSwitchId) {
+          microphoneAttached = !attached;
+        }
+      });
+    }
+
+    function clearInputAudioBuffer() {
       if (dc.readyState !== "open") return;
-      sendUserTextItem(dc, text);
-      dc.send(JSON.stringify({ type: "response.create" }));
+      dc.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
     }
-  };
+
+    function pauseInputCapture() {
+      setMicrophoneAttached(false);
+    }
+
+    function suspendInput(options: { clearBuffer?: boolean } = {}) {
+      pauseInputCapture();
+      sendTurnDetectionUpdate(dc, null);
+      if (options.clearBuffer ?? true) {
+        clearInputAudioBuffer();
+      }
+    }
+
+    function resumeInput() {
+      clearInputAudioBuffer();
+      sendTurnDetectionUpdate(dc, NO_INTERRUPT_TURN_DETECTION);
+      setMicrophoneAttached(true);
+    }
+
+    return {
+      pc,
+      dc,
+      localStream,
+      stop() {
+        localStream?.getTracks().forEach((track) => track.stop());
+        pc.close();
+      },
+      setInputMuted(muted: boolean) {
+        if (muted) {
+          pauseInputCapture();
+        } else {
+          resumeInput();
+        }
+      },
+      pauseInputCapture,
+      suspendInput,
+      resumeInput,
+      clearInputAudioBuffer,
+      sendContext(text: string) {
+        sendUserTextItem(dc, text);
+      },
+      sendText(text: string) {
+        if (dc.readyState !== "open") return;
+        sendUserTextItem(dc, text);
+        dc.send(JSON.stringify({ type: "response.create" }));
+      }
+    };
+  } catch (error) {
+    localStream?.getTracks().forEach((track) => track.stop());
+    pc.close();
+    throw error;
+  }
 }
 
 function sendUserTextItem(dc: RTCDataChannel, text: string) {

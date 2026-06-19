@@ -1,7 +1,6 @@
 import {
   createOrderPreview,
   searchGroceryOptions,
-  submitOrder,
   type OrderPreview
 } from "../api/grocery";
 import { useGroceryStore } from "../store/useGroceryStore";
@@ -16,16 +15,19 @@ let latestGrocerySearchId = 0;
 
 export async function handleRealtimeToolCall(call: RealtimeToolCall, userId: string): Promise<unknown> {
   const args = parseToolArguments(call.arguments);
-  const groceryStore = useGroceryStore.getState();
 
   if (call.name === "search_grocery_options") {
     const searchId = ++latestGrocerySearchId;
+    const requestedItems = Array.isArray(args.items) ? args.items : [];
     useGroceryStore.getState().setOptions([]);
+    if (requestedItems.length === 0) {
+      return { error: "items must be a non-empty array", options: [] };
+    }
     const options = await searchGroceryOptions({
       user_id: userId,
-      items: args.items ?? [],
-      budget_cents: args.budget_cents,
-      utterance: args.utterance
+      items: requestedItems,
+      budget_cents: typeof args.budget_cents === "number" ? args.budget_cents : undefined,
+      utterance: typeof args.utterance === "string" ? args.utterance : undefined
     });
     if (searchId === latestGrocerySearchId) {
       useGroceryStore.getState().setOptions(options);
@@ -34,7 +36,10 @@ export async function handleRealtimeToolCall(call: RealtimeToolCall, userId: str
   }
 
   if (call.name === "create_order_preview") {
-    const preview = await createOrderPreview({ user_id: userId, option_id: String(args.option_id) });
+    if (typeof args.option_id !== "string" || args.option_id.trim().length === 0) {
+      return { error: "option_id is required to create an order preview" };
+    }
+    const preview = await createOrderPreview({ user_id: userId, option_id: args.option_id.trim() });
     useGroceryStore.getState().setPreview(preview);
     return {
       preview,
@@ -44,16 +49,11 @@ export async function handleRealtimeToolCall(call: RealtimeToolCall, userId: str
   }
 
   if (call.name === "submit_order") {
-    groceryStore.setStage("ordering");
-    const order = await submitOrder({
-      user_id: userId,
-      preview_id: String(args.preview_id),
-      confirmation_token: String(args.confirmation_token)
-    });
-    if (groceryStore.currentPreview) {
-      groceryStore.setOrder(order, groceryStore.currentPreview);
-    }
-    return { order };
+    return {
+      error: "submit_order is only allowed after the elder clicks the on-screen confirmation button.",
+      requires_ui_confirmation: true,
+      next_step: "请老人查看屏幕上的确认弹窗。前端确认按钮会签发一次性 confirmation_token 并提交订单。"
+    };
   }
 
   return { error: `Unknown tool: ${call.name}` };

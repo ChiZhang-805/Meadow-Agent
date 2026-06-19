@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from app.providers.base import GroceryItem, OrderPreview
 
 
-RISKY_KEYWORDS = ("药", "处方", "酒", "白酒", "啤酒", "保健品", "补品")
+RISKY_KEYWORDS = ("处方药", "处方", "药品", "药片", "感冒药", "止痛药", "中药", "西药", "酒", "白酒", "啤酒", "保健品", "补品")
 VAGUE_PURCHASE_PHRASES = ("随便买", "你决定", "都行", "看着办")
 
 

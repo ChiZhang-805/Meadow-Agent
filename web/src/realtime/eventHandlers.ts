@@ -29,17 +29,25 @@ export function createRealtimeEventHandler(params: RealtimeEventHandlerParams) {
       params.onUserTranscript(event.transcript);
     }
 
-    if (type === "response.output_text.delta" && typeof event.delta === "string") {
+    if (
+      (type === "response.output_text.delta" || type === "response.text.delta") &&
+      typeof event.delta === "string"
+    ) {
       params.appendAiReplyDelta(event.delta);
     }
 
-    if (type === "response.output_audio_transcript.delta" && typeof event.delta === "string") {
+    if (
+      (type === "response.output_audio_transcript.delta" || type === "response.audio_transcript.delta") &&
+      typeof event.delta === "string"
+    ) {
       params.appendAiReplyDelta(event.delta);
     }
 
     if (
       type === "response.output_text.done" ||
+      type === "response.text.done" ||
       type === "response.output_audio_transcript.done" ||
+      type === "response.audio_transcript.done" ||
       type === "response.done" ||
       (type === "response.output_item.done" && event.item?.type === "message")
     ) {
@@ -68,7 +76,8 @@ function isAssistantSpeakingStart(type: string) {
     type === "response.output_audio.delta" ||
     type === "response.audio.delta" ||
     type === "response.output_audio.started" ||
-    type === "response.output_audio_transcript.delta"
+    type === "response.output_audio_transcript.delta" ||
+    type === "response.audio_transcript.delta"
   );
 }
 
@@ -76,6 +85,7 @@ function isAssistantSpeakingEnd(type: string) {
   return (
     type === "response.output_audio.done" ||
     type === "response.audio.done" ||
+    type === "response.audio_transcript.done" ||
     type === "output_audio_buffer.stopped" ||
     type === "response.done" ||
     type === "response.cancelled" ||

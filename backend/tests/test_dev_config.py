@@ -42,3 +42,15 @@ def test_dev_config_can_set_runtime_amap_key() -> None:
         amap_item = next(item for item in status.json()["items"] if item["name"] == "AMAP_API_KEY")
         assert amap_item["configured"]
         assert amap_item["source"] == "runtime_memory"
+
+
+def test_dev_config_cannot_set_runtime_key_in_production(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+
+    with make_client() as client:
+        response = client.post(
+            "/api/dev/config/openai-api-key",
+            json={"openai_api_key": "sk-test_abcdefghijklmnopqrstuvwxyz"},
+        )
+
+    assert response.status_code == 403

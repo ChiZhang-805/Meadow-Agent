@@ -12,8 +12,8 @@ export interface ConfigStatus {
   items: ExternalConfigItem[];
 }
 
-export async function getConfigStatus(): Promise<ConfigStatus> {
-  return apiGet<ConfigStatus>("/api/dev/config/status");
+export async function getConfigStatus(userId: string): Promise<ConfigStatus> {
+  return apiGet<ConfigStatus>("/api/dev/config/status", { "X-User-Id": userId });
 }
 
 export async function saveOpenAIKey(openaiApiKey: string): Promise<{ configured: boolean }> {

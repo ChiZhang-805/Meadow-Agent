@@ -6,10 +6,11 @@ import { getAddressSuggestions, saveDeliveryAddress, type AddressSuggestion } fr
 
 interface ConfigSidebarProps {
   open: boolean;
+  userId: string;
   onClose: () => void;
 }
 
-export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
+export function ConfigSidebar({ open, userId, onClose }: ConfigSidebarProps) {
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [openAIKey, setOpenAIKey] = useState("");
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
@@ -27,7 +28,7 @@ export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
   useEffect(() => {
     if (!open) return;
     void refreshStatus();
-  }, [open]);
+  }, [open, userId]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +47,7 @@ export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
 
   async function refreshStatus() {
     try {
-      setStatus(await getConfigStatus());
+      setStatus(await getConfigStatus(userId));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
@@ -55,6 +56,7 @@ export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
   const hasOpenAIKeyInput = openAIKey.trim().length > 0;
   const hasAMapKeyInput = amapKey.trim().length > 0;
   const canSaveAnyKey = hasOpenAIKeyInput || hasAMapKeyInput;
+  const canEditSecrets = status?.app_env === "development";
 
   async function saveKeys() {
     setBusy(true);
@@ -116,7 +118,7 @@ export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
     setMessage("");
     try {
       await saveDeliveryAddress({
-        user_id: "demo-user",
+        user_id: userId,
         name: selectedAddress.name,
         district: selectedAddress.district,
         address: selectedAddress.address,
@@ -146,30 +148,32 @@ export function ConfigSidebar({ open, onClose }: ConfigSidebarProps) {
           </button>
         </header>
 
-        <section className="secret-editor" aria-label="API Key">
-          <SecretInput
-            id="openai-key-input"
-            label="OpenAI API Key"
-            placeholder="sk-..."
-            value={openAIKey}
-            visible={showOpenAIKey}
-            onChange={setOpenAIKey}
-            onToggleVisible={() => setShowOpenAIKey((value) => !value)}
-          />
-          <SecretInput
-            id="amap-key-input"
-            label="高德地图 API Key"
-            placeholder="AMap Web服务 Key"
-            value={amapKey}
-            visible={showAMapKey}
-            onChange={setAMapKey}
-            onToggleVisible={() => setShowAMapKey((value) => !value)}
-          />
-          <button className="save-secret-button" disabled={busy || !canSaveAnyKey} onClick={saveKeys}>
-            <Save aria-hidden="true" size={24} />
-            保存 Key
-          </button>
-        </section>
+        {canEditSecrets ? (
+          <section className="secret-editor" aria-label="API Key">
+            <SecretInput
+              id="openai-key-input"
+              label="OpenAI API Key"
+              placeholder="sk-..."
+              value={openAIKey}
+              visible={showOpenAIKey}
+              onChange={setOpenAIKey}
+              onToggleVisible={() => setShowOpenAIKey((value) => !value)}
+            />
+            <SecretInput
+              id="amap-key-input"
+              label="高德地图 API Key"
+              placeholder="AMap Web服务 Key"
+              value={amapKey}
+              visible={showAMapKey}
+              onChange={setAMapKey}
+              onToggleVisible={() => setShowAMapKey((value) => !value)}
+            />
+            <button className="save-secret-button" disabled={busy || !canSaveAnyKey} onClick={saveKeys}>
+              <Save aria-hidden="true" size={24} />
+              保存 Key
+            </button>
+          </section>
+        ) : null}
 
         <section className="address-editor" aria-label="收货地址">
           <label htmlFor="address-query-input">
