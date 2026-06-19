@@ -27,5 +27,5 @@ export async function getAddressSuggestions(payload: {
 }
 
 export async function saveDeliveryAddress(payload: DeliveryAddressPayload): Promise<void> {
-  await apiPost("/api/location/address", payload);
+  await apiPost("/api/location/address", payload, { "X-User-Id": payload.user_id });
 }

@@ -41,7 +41,11 @@ export async function searchGroceryOptions(payload: {
   budget_cents?: number;
   utterance?: string;
 }): Promise<GroceryOption[]> {
-  const data = await apiPost<{ options: GroceryOption[] }>("/api/tools/search_grocery_options", payload);
+  const data = await apiPost<{ options: GroceryOption[] }>(
+    "/api/tools/search_grocery_options",
+    payload,
+    userHeaders(payload.user_id)
+  );
   return data.options;
 }
 
@@ -49,7 +53,11 @@ export async function createOrderPreview(payload: {
   user_id: string;
   option_id: string;
 }): Promise<OrderPreview> {
-  const data = await apiPost<{ preview: OrderPreview }>("/api/tools/create_order_preview", payload);
+  const data = await apiPost<{ preview: OrderPreview }>(
+    "/api/tools/create_order_preview",
+    payload,
+    userHeaders(payload.user_id)
+  );
   return data.preview;
 }
 
@@ -57,7 +65,11 @@ export async function issueConfirmationToken(payload: {
   user_id: string;
   preview_id: string;
 }): Promise<string> {
-  const data = await apiPost<{ confirmation_token: string }>("/api/tools/issue_confirmation_token", payload);
+  const data = await apiPost<{ confirmation_token: string }>(
+    "/api/tools/issue_confirmation_token",
+    payload,
+    userHeaders(payload.user_id)
+  );
   return data.confirmation_token;
 }
 
@@ -66,6 +78,14 @@ export async function submitOrder(payload: {
   preview_id: string;
   confirmation_token: string;
 }): Promise<OrderResult> {
-  const data = await apiPost<{ order: OrderResult }>("/api/tools/submit_order", payload);
+  const data = await apiPost<{ order: OrderResult }>(
+    "/api/tools/submit_order",
+    payload,
+    userHeaders(payload.user_id)
+  );
   return data.order;
+}
+
+function userHeaders(userId: string): HeadersInit {
+  return { "X-User-Id": userId };
 }

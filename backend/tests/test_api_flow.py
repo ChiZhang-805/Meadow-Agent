@@ -62,6 +62,74 @@ def test_blank_grocery_item_name_is_rejected() -> None:
     assert response.status_code == 422
 
 
+def test_empty_grocery_items_are_rejected() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/tools/search_grocery_options",
+            json={"user_id": "demo-user", "items": []},
+        )
+
+    assert response.status_code == 422
+
+
+def test_invalid_grocery_budget_is_rejected() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/tools/search_grocery_options",
+            json={"user_id": "demo-user", "items": [{"name": "土豆"}], "budget_cents": -1},
+        )
+
+    assert response.status_code == 422
+
+
+def test_blank_option_id_is_rejected() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/tools/create_order_preview",
+            json={"user_id": "demo-user", "option_id": "   "},
+        )
+
+    assert response.status_code == 422
+
+
+def test_overlong_confirmation_token_is_rejected() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/tools/submit_order",
+            json={
+                "user_id": "demo-user",
+                "preview_id": "preview_123",
+                "confirmation_token": "x" * 300,
+            },
+        )
+
+    assert response.status_code == 422
+
+
+def test_x_user_id_takes_precedence_over_body_user_id() -> None:
+    with make_client() as client:
+        search = client.post(
+            "/api/tools/search_grocery_options",
+            headers={"X-User-Id": "header-user"},
+            json={"user_id": "body-user", "items": [{"name": "土豆", "quantity": "适量"}]},
+        )
+        assert search.status_code == 200
+        option_id = search.json()["options"][0]["id"]
+
+        header_preview = client.post(
+            "/api/tools/create_order_preview",
+            headers={"X-User-Id": "header-user"},
+            json={"user_id": "body-user", "option_id": option_id},
+        )
+        assert header_preview.status_code == 200
+
+        body_only_preview = client.post(
+            "/api/tools/create_order_preview",
+            json={"user_id": "body-user", "option_id": option_id},
+        )
+        assert body_only_preview.status_code == 403
+
+
 def test_order_preview_uses_saved_delivery_address() -> None:
     with make_client() as client:
         address_response = client.post(

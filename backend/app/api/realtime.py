@@ -24,7 +24,7 @@ async def create_realtime_token(
     if not is_configured_secret(openai_api_key):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY is not configured")
 
-    user_id = x_user_id or settings.demo_user_id
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
     headers = {
         "Authorization": f"Bearer {openai_api_key}",
         "Content-Type": "application/json",

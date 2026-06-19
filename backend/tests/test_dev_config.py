@@ -30,6 +30,16 @@ def test_dev_config_rejects_non_openai_key_shape() -> None:
     assert response.status_code == 400
 
 
+def test_dev_config_rejects_blank_padded_short_key() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/dev/config/openai-api-key",
+            json={"openai_api_key": " " * 25},
+        )
+
+    assert response.status_code == 422
+
+
 def test_dev_config_can_set_runtime_amap_key() -> None:
     with make_client() as client:
         response = client.post(

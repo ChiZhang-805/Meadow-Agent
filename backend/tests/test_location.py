@@ -96,3 +96,28 @@ def test_config_status_address_is_scoped_by_user() -> None:
     address_b = next(item for item in user_b.json()["items"] if item["name"] == "地址")
     assert address_a["configured"]
     assert not address_b["configured"]
+
+
+def test_save_delivery_address_prefers_header_user_id() -> None:
+    with make_client() as client:
+        response = client.post(
+            "/api/location/address",
+            headers={"X-User-Id": "header-user"},
+            json={
+                "user_id": "body-user",
+                "name": "上海人民广场",
+                "district": "上海市黄浦区",
+                "address": "人民大道",
+                "location": "121.475,31.23",
+                "detail": "1号楼2单元301",
+            },
+        )
+        assert response.status_code == 200
+
+        header_status = client.get("/api/dev/config/status", headers={"X-User-Id": "header-user"})
+        body_status = client.get("/api/dev/config/status", headers={"X-User-Id": "body-user"})
+
+    header_address = next(item for item in header_status.json()["items"] if item["name"] == "地址")
+    body_address = next(item for item in body_status.json()["items"] if item["name"] == "地址")
+    assert header_address["configured"]
+    assert not body_address["configured"]

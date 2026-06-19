@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.services.profile_service import InMemoryProfileService, get_profile_service
 from app.services.runtime_secrets import (
@@ -14,11 +14,27 @@ router = APIRouter(prefix="/api/dev/config", tags=["dev-config"])
 
 
 class OpenAIKeyRequest(BaseModel):
-    openai_api_key: str = Field(min_length=20)
+    openai_api_key: str = Field(min_length=20, max_length=300)
+
+    @field_validator("openai_api_key")
+    @classmethod
+    def normalize_openai_api_key(cls, value: str) -> str:
+        text = value.strip()
+        if len(text) < 20:
+            raise ValueError("OpenAI API key is too short")
+        return text
 
 
 class AMapKeyRequest(BaseModel):
-    amap_api_key: str = Field(min_length=6)
+    amap_api_key: str = Field(min_length=6, max_length=120)
+
+    @field_validator("amap_api_key")
+    @classmethod
+    def normalize_amap_api_key(cls, value: str) -> str:
+        text = value.strip()
+        if len(text) < 6:
+            raise ValueError("AMap API key is too short")
+        return text
 
 
 @router.get("/status")
@@ -28,7 +44,7 @@ async def get_config_status(
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
     profile_service: InMemoryProfileService = Depends(get_profile_service),
 ) -> dict:
-    user_id = x_user_id or settings.demo_user_id
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
     items = build_external_config_status(settings, runtime_secrets)
     items.insert(
         2,

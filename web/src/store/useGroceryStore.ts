@@ -31,6 +31,7 @@ interface GroceryState {
   selectedHistoryOrderId?: string;
   pendingConfirmation: boolean;
   stage: GroceryStage;
+  beginSearch: () => void;
   setOptions: (options: GroceryOption[]) => void;
   setPreview: (preview: OrderPreview) => void;
   clearPreview: () => void;
@@ -39,7 +40,6 @@ interface GroceryState {
   setOrderStage: (orderId: string, stage: GroceryStage) => void;
   cancelOrder: (orderId: string) => void;
   selectHistoryOrder: (orderId?: string) => void;
-  cancelFlow: () => void;
 }
 
 export const useGroceryStore = create<GroceryState>((set) => ({
@@ -47,13 +47,21 @@ export const useGroceryStore = create<GroceryState>((set) => ({
   orderHistory: [],
   pendingConfirmation: false,
   stage: "idle",
+  beginSearch: () =>
+    set({
+      options: [],
+      currentPreview: undefined,
+      pendingConfirmation: false,
+      selectedHistoryOrderId: undefined,
+      stage: "searching"
+    }),
   setOptions: (options) =>
     set({
       options,
       currentPreview: undefined,
       pendingConfirmation: false,
       selectedHistoryOrderId: undefined,
-      stage: options.length > 0 ? "options_ready" : "searching"
+      stage: options.length > 0 ? "options_ready" : "idle"
     }),
   setPreview: (preview) =>
     set({ currentPreview: preview, pendingConfirmation: true, selectedHistoryOrderId: undefined, stage: "preview_ready" }),
@@ -120,11 +128,4 @@ export const useGroceryStore = create<GroceryState>((set) => ({
       };
     }),
   selectHistoryOrder: (orderId) => set({ selectedHistoryOrderId: orderId }),
-  cancelFlow: () =>
-    set({
-      currentPreview: undefined,
-      pendingConfirmation: false,
-      selectedHistoryOrderId: undefined,
-      stage: "cancelled"
-    })
 }));

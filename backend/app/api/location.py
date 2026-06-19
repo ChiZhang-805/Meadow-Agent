@@ -1,7 +1,7 @@
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.services.profile_service import DeliveryAddress, InMemoryProfileService, get_profile_service
@@ -42,20 +42,28 @@ class AddressSuggestion(BaseModel):
 
 
 class SaveAddressRequest(BaseModel):
-    user_id: str
+    user_id: str | None = None
     name: str = Field(min_length=1, max_length=120)
     district: str | None = None
     address: str | None = None
     location: str | None = None
     detail: str | None = Field(default=None, max_length=120)
 
-    @field_validator("user_id", "name")
+    @field_validator("name")
     @classmethod
     def normalize_required_text(cls, value: str) -> str:
         text = value.strip()
         if not text:
             raise ValueError("value cannot be blank")
         return text
+
+    @field_validator("user_id")
+    @classmethod
+    def normalize_user_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
     @field_validator("district", "address", "location", "detail")
     @classmethod
@@ -96,18 +104,29 @@ async def get_amap_address_suggestions(
         raise HTTPException(status_code=502, detail=data.get("info") or "AMap inputtips failed")
 
     tips = data.get("tips") if isinstance(data.get("tips"), list) else []
-    suggestions = [normalize_tip(tip) for tip in tips[:8] if isinstance(tip, dict)]
+    suggestions: list[AddressSuggestion] = []
+    for tip in tips:
+        if not isinstance(tip, dict):
+            continue
+        suggestion = normalize_tip(tip)
+        if suggestion.name:
+            suggestions.append(suggestion)
+        if len(suggestions) >= 8:
+            break
     return {"suggestions": [suggestion.model_dump() for suggestion in suggestions]}
 
 
 @router.post("/address")
 async def save_delivery_address(
     payload: SaveAddressRequest,
+    x_user_id: str | None = Header(default=None),
+    settings: Settings = Depends(get_settings),
     profile_service: InMemoryProfileService = Depends(get_profile_service),
 ) -> dict[str, Any]:
+    user_id = (x_user_id.strip() if x_user_id else "") or payload.user_id or settings.demo_user_id
     address = profile_service.set_delivery_address(
         DeliveryAddress(
-            user_id=payload.user_id,
+            user_id=user_id,
             name=payload.name,
             district=payload.district,
             address=payload.address,

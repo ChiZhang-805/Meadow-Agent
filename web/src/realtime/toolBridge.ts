@@ -19,16 +19,27 @@ export async function handleRealtimeToolCall(call: RealtimeToolCall, userId: str
   if (call.name === "search_grocery_options") {
     const searchId = ++latestGrocerySearchId;
     const requestedItems = Array.isArray(args.items) ? args.items : [];
-    useGroceryStore.getState().setOptions([]);
+    useGroceryStore.getState().beginSearch();
     if (requestedItems.length === 0) {
+      useGroceryStore.getState().setOptions([]);
       return { error: "items must be a non-empty array", options: [] };
     }
-    const options = await searchGroceryOptions({
-      user_id: userId,
-      items: requestedItems,
-      budget_cents: typeof args.budget_cents === "number" ? args.budget_cents : undefined,
-      utterance: typeof args.utterance === "string" ? args.utterance : undefined
-    });
+
+    let options: Awaited<ReturnType<typeof searchGroceryOptions>>;
+    try {
+      options = await searchGroceryOptions({
+        user_id: userId,
+        items: requestedItems,
+        budget_cents: typeof args.budget_cents === "number" ? args.budget_cents : undefined,
+        utterance: typeof args.utterance === "string" ? args.utterance : undefined
+      });
+    } catch (error) {
+      if (searchId === latestGrocerySearchId) {
+        useGroceryStore.getState().setOptions([]);
+      }
+      throw error;
+    }
+
     if (searchId === latestGrocerySearchId) {
       useGroceryStore.getState().setOptions(options);
     }

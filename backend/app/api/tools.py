@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.dependencies import get_grocery_service
 from app.providers.base import GroceryItem
@@ -11,29 +11,67 @@ from app.settings import Settings, get_settings
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
 
-class SearchGroceryOptionsRequest(BaseModel):
-    user_id: str | None = None
-    items: list[GroceryItem]
-    latitude: float = 31.2304
-    longitude: float = 121.4737
-    budget_cents: int | None = None
-    utterance: str | None = None
+class UserScopedRequest(BaseModel):
+    user_id: str | None = Field(default=None, max_length=120)
+
+    @field_validator("user_id")
+    @classmethod
+    def normalize_user_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
 
-class CreateOrderPreviewRequest(BaseModel):
-    user_id: str | None = None
-    option_id: str
+class SearchGroceryOptionsRequest(UserScopedRequest):
+    items: list[GroceryItem] = Field(min_length=1, max_length=12)
+    latitude: float = Field(default=31.2304, ge=-90, le=90)
+    longitude: float = Field(default=121.4737, ge=-180, le=180)
+    budget_cents: int | None = Field(default=None, ge=0)
+    utterance: str | None = Field(default=None, max_length=600)
+
+    @field_validator("utterance")
+    @classmethod
+    def normalize_utterance(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
 
-class IssueConfirmationTokenRequest(BaseModel):
-    user_id: str | None = None
-    preview_id: str
+class CreateOrderPreviewRequest(UserScopedRequest):
+    option_id: str = Field(min_length=1, max_length=160)
+
+    @field_validator("option_id")
+    @classmethod
+    def normalize_option_id(cls, value: str) -> str:
+        return require_text(value, "option_id")
 
 
-class SubmitOrderRequest(BaseModel):
-    user_id: str | None = None
-    preview_id: str
-    confirmation_token: str = Field(min_length=10)
+class IssueConfirmationTokenRequest(UserScopedRequest):
+    preview_id: str = Field(min_length=1, max_length=160)
+
+    @field_validator("preview_id")
+    @classmethod
+    def normalize_preview_id(cls, value: str) -> str:
+        return require_text(value, "preview_id")
+
+
+class SubmitOrderRequest(UserScopedRequest):
+    preview_id: str = Field(min_length=1, max_length=160)
+    confirmation_token: str = Field(min_length=10, max_length=256)
+
+    @field_validator("preview_id", "confirmation_token")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return require_text(value, "value")
+
+
+def require_text(value: str, field_name: str) -> str:
+    text = value.strip()
+    if not text:
+        raise ValueError(f"{field_name} cannot be blank")
+    return text
 
 
 def resolve_user_id(
@@ -41,7 +79,8 @@ def resolve_user_id(
     settings: Settings,
     x_user_id: str | None,
 ) -> str:
-    return body_user_id or x_user_id or settings.demo_user_id
+    header_user_id = x_user_id.strip() if x_user_id else ""
+    return header_user_id or body_user_id or settings.demo_user_id
 
 
 @router.post("/search_grocery_options")
@@ -77,6 +116,8 @@ async def create_order_preview(
             user_id=resolve_user_id(payload.user_id, settings, x_user_id),
             option_id=payload.option_id,
         )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"preview": preview.model_dump()}

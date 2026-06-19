@@ -78,8 +78,7 @@ export default function App() {
     setStage,
     setOrderStage,
     cancelOrder,
-    selectHistoryOrder,
-    cancelFlow
+    selectHistoryOrder
   } = useGroceryStore();
 
   useEffect(() => {
@@ -111,9 +110,9 @@ export default function App() {
         onAssistantSpeakingChange: setAssistantSpeaking,
         onToolCall: async (call) => {
           addEventLog(`tool:${call.name}`);
+          const channel = sessionRef.current?.dc;
           try {
             const output = await handleRealtimeToolCall(call, userId);
-            const channel = sessionRef.current?.dc;
             if (channel) {
               suspendInputForAssistant();
               sendToolOutput(channel, call.callId, output);
@@ -121,6 +120,10 @@ export default function App() {
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             addEventLog(`tool_error:${message}`);
+            if (channel) {
+              suspendInputForAssistant();
+              sendToolOutput(channel, call.callId, { error: message });
+            }
           }
         }
       }),
@@ -521,8 +524,13 @@ export default function App() {
       ["delivering", 5600],
       ["delivered", 8600]
     ] as const;
-    const timers = schedule.map(([nextStage, delay]) =>
-      window.setTimeout(() => setOrderStage(orderId, nextStage), delay)
+    const timers = schedule.map(([nextStage, delay], index) =>
+      window.setTimeout(() => {
+        setOrderStage(orderId, nextStage);
+        if (index === schedule.length - 1) {
+          groceryTimersRef.current.delete(orderId);
+        }
+      }, delay)
     );
     groceryTimersRef.current.set(orderId, timers);
   }

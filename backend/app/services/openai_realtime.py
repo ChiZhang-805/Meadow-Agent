@@ -37,6 +37,7 @@ REALTIME_TOOLS = [
                 },
                 "budget_cents": {"type": "integer"},
                 "delivery_time": {"type": "string"},
+                "utterance": {"type": "string"},
             },
             "required": ["items"],
         },
