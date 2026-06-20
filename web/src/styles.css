@@ -568,9 +568,9 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-width: 300px;
+  min-width: 380px;
   min-height: 58px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-radius: 8px;
   background: #ffffff;
   border: 2px solid #d7e4d9;
@@ -586,21 +586,16 @@ button {
 
 .emotion-control-main {
   display: grid;
-  gap: 0;
+  gap: 2px;
   min-width: 0;
 }
 
 .emotion-control-main span {
-  color: #4f645b;
-  font-size: 13px;
-  line-height: 1.1;
-  font-weight: 700;
-}
-
-.emotion-control-main strong {
-  color: #197b59;
+  color: #25362f;
   font-size: 20px;
-  line-height: 1.12;
+  line-height: 1.15;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .emotion-control-main small {
@@ -608,6 +603,42 @@ button {
   font-size: 13px;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.emotion-control-main strong {
+  color: #6f7d78;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.emotion-tone-happy .emotion-control-main strong {
+  color: #197b59;
+}
+
+.emotion-tone-calm .emotion-control-main strong {
+  color: #345f91;
+}
+
+.emotion-tone-sad_tendency .emotion-control-main strong {
+  color: #6b5aa6;
+}
+
+.emotion-tone-angry_tendency .emotion-control-main strong {
+  color: #bc493c;
+}
+
+.emotion-tone-surprised .emotion-control-main strong {
+  color: #a06112;
+}
+
+.emotion-tone-unknown .emotion-control-main strong,
+.emotion-tone-idle .emotion-control-main strong,
+.emotion-tone-loading .emotion-control-main strong {
+  color: #708078;
+}
+
+.emotion-tone-error .emotion-control-main strong {
+  color: #923324;
 }
 
 .emotion-control button {

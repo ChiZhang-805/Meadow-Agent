@@ -173,13 +173,18 @@ export function EmotionBadge({ userId }: { userId: string }) {
 
   const activeLabel = state === "active" ? labelText[current.label] : stateText(state);
   const buttonLabel = state === "active" ? "停止识别" : "开启识别";
+  const tone = state === "active" ? current.label : state;
 
   return (
-    <section className={`emotion-badge emotion-control emotion-control-${state}`} aria-label="表情识别">
+    <section
+      className={`emotion-badge emotion-control emotion-control-${state} emotion-tone-${tone}`}
+      aria-label="表情识别"
+    >
       <video ref={videoRef} className="emotion-video" muted playsInline />
       <div className="emotion-control-main">
-        <span>表情识别</span>
-        <strong>{activeLabel}</strong>
+        <span>
+          表情识别：<strong>{activeLabel}</strong>
+        </span>
         {message ? <small>{message}</small> : null}
       </div>
       <button
