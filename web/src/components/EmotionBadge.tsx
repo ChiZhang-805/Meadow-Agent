@@ -180,7 +180,7 @@ export function EmotionBadge({ userId }: { userId: string }) {
       <div className="emotion-control-main">
         <span>表情识别</span>
         <strong>{activeLabel}</strong>
-        <small>{message || "不保存原始视频"}</small>
+        {message ? <small>{message}</small> : null}
       </div>
       <button
         type="button"

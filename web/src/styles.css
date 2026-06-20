@@ -567,10 +567,10 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  min-width: 310px;
-  min-height: 70px;
-  padding: 10px 12px;
+  gap: 12px;
+  min-width: 300px;
+  min-height: 58px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: #ffffff;
   border: 2px solid #d7e4d9;
@@ -586,20 +586,21 @@ button {
 
 .emotion-control-main {
   display: grid;
-  gap: 2px;
+  gap: 0;
   min-width: 0;
 }
 
 .emotion-control-main span {
   color: #4f645b;
-  font-size: 15px;
+  font-size: 13px;
+  line-height: 1.1;
   font-weight: 700;
 }
 
 .emotion-control-main strong {
   color: #197b59;
-  font-size: 22px;
-  line-height: 1.15;
+  font-size: 20px;
+  line-height: 1.12;
 }
 
 .emotion-control-main small {
@@ -614,7 +615,7 @@ button {
   grid-template-columns: 22px auto;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
+  min-height: 42px;
   padding: 8px 10px;
   border: 0;
   border-radius: 8px;
