@@ -565,10 +565,10 @@ button {
 
 .emotion-badge {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto auto;
   align-items: center;
-  gap: 12px;
-  min-width: 380px;
+  gap: 14px;
+  min-width: 330px;
   min-height: 58px;
   padding: 8px 12px;
   border-radius: 8px;
