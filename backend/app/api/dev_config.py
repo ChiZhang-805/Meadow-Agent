@@ -45,7 +45,7 @@ async def get_config_status(
     profile_service: InMemoryProfileService = Depends(get_profile_service),
 ) -> dict:
     user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
-    items = build_external_config_status(settings, runtime_secrets)
+    items = build_external_config_status(settings, runtime_secrets, user_id=user_id)
     items.insert(
         2,
         RuntimeSecretStatus(
@@ -65,17 +65,16 @@ async def get_config_status(
 @router.post("/openai-api-key")
 async def set_openai_api_key(
     payload: OpenAIKeyRequest,
+    x_user_id: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
 ) -> dict:
-    if settings.app_env != "development":
-        raise HTTPException(status_code=403, detail="Runtime secret editing is only available in development")
-
     api_key = payload.openai_api_key.strip()
     if not api_key.startswith("sk-"):
         raise HTTPException(status_code=400, detail="OpenAI API key should start with sk-")
 
-    runtime_secrets.set_openai_api_key(api_key)
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
+    runtime_secrets.set_openai_api_key(api_key, user_id=user_id)
     return {
         "configured": True,
         "source": "runtime_memory",
@@ -85,14 +84,13 @@ async def set_openai_api_key(
 @router.post("/amap-api-key")
 async def set_amap_api_key(
     payload: AMapKeyRequest,
+    x_user_id: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
 ) -> dict:
-    if settings.app_env != "development":
-        raise HTTPException(status_code=403, detail="Runtime secret editing is only available in development")
-
     api_key = payload.amap_api_key.strip()
-    runtime_secrets.set_amap_api_key(api_key)
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
+    runtime_secrets.set_amap_api_key(api_key, user_id=user_id)
     return {
         "configured": True,
         "source": "runtime_memory",

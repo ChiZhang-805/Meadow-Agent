@@ -16,28 +16,40 @@ class RuntimeSecrets:
     def __init__(self) -> None:
         self._openai_api_key: str | None = None
         self._amap_api_key: str | None = None
+        self._user_openai_api_keys: dict[str, str] = {}
+        self._user_amap_api_keys: dict[str, str] = {}
 
-    def set_openai_api_key(self, key: str) -> None:
-        self._openai_api_key = key.strip()
+    def set_openai_api_key(self, key: str, user_id: str | None = None) -> None:
+        normalized = key.strip()
+        if user_id:
+            self._user_openai_api_keys[user_id] = normalized
+            return
+        self._openai_api_key = normalized
 
-    def set_amap_api_key(self, key: str) -> None:
-        self._amap_api_key = key.strip()
+    def set_amap_api_key(self, key: str, user_id: str | None = None) -> None:
+        normalized = key.strip()
+        if user_id:
+            self._user_amap_api_keys[user_id] = normalized
+            return
+        self._amap_api_key = normalized
 
-    def get_openai_api_key(self, settings: Settings) -> str:
+    def get_openai_api_key(self, settings: Settings, user_id: str | None = None) -> str:
+        user_key = self._user_openai_api_keys.get(user_id or "") if user_id else ""
         runtime_key = self._openai_api_key or ""
         env_key = settings.openai_api_key or ""
-        return runtime_key or env_key
+        return user_key or runtime_key or env_key
 
-    def get_amap_api_key(self, settings: Settings) -> str:
+    def get_amap_api_key(self, settings: Settings, user_id: str | None = None) -> str:
+        user_key = self._user_amap_api_keys.get(user_id or "") if user_id else ""
         runtime_key = self._amap_api_key or ""
         env_key = settings.amap_api_key or ""
-        return runtime_key or env_key
+        return user_key or runtime_key or env_key
 
-    def has_runtime_openai_api_key(self) -> bool:
-        return bool(self._openai_api_key)
+    def has_runtime_openai_api_key(self, user_id: str | None = None) -> bool:
+        return bool(self._user_openai_api_keys.get(user_id or "")) or bool(self._openai_api_key)
 
-    def has_runtime_amap_api_key(self) -> bool:
-        return bool(self._amap_api_key)
+    def has_runtime_amap_api_key(self, user_id: str | None = None) -> bool:
+        return bool(self._user_amap_api_keys.get(user_id or "")) or bool(self._amap_api_key)
 
 
 @lru_cache
@@ -51,11 +63,15 @@ def is_configured_secret(value: str | None) -> bool:
     return not value.startswith("sk-REPLACE")
 
 
-def build_external_config_status(settings: Settings, runtime_secrets: RuntimeSecrets) -> list[RuntimeSecretStatus]:
-    openai_key = runtime_secrets.get_openai_api_key(settings)
-    openai_source = "runtime_memory" if runtime_secrets.has_runtime_openai_api_key() else "environment"
-    amap_key = runtime_secrets.get_amap_api_key(settings)
-    amap_source = "runtime_memory" if runtime_secrets.has_runtime_amap_api_key() else "environment"
+def build_external_config_status(
+    settings: Settings,
+    runtime_secrets: RuntimeSecrets,
+    user_id: str | None = None,
+) -> list[RuntimeSecretStatus]:
+    openai_key = runtime_secrets.get_openai_api_key(settings, user_id=user_id)
+    openai_source = "runtime_memory" if runtime_secrets.has_runtime_openai_api_key(user_id) else "environment"
+    amap_key = runtime_secrets.get_amap_api_key(settings, user_id=user_id)
+    amap_source = "runtime_memory" if runtime_secrets.has_runtime_amap_api_key(user_id) else "environment"
 
     return [
         RuntimeSecretStatus(

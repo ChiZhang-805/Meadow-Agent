@@ -19,10 +19,15 @@ export interface DeliveryAddressPayload {
 }
 
 export async function getAddressSuggestions(payload: {
+  user_id: string;
   query: string;
   city?: string;
 }): Promise<AddressSuggestion[]> {
-  const data = await apiPost<{ suggestions: AddressSuggestion[] }>("/api/location/amap/address_suggestions", payload);
+  const data = await apiPost<{ suggestions: AddressSuggestion[] }>(
+    "/api/location/amap/address_suggestions",
+    payload,
+    { "X-User-Id": payload.user_id }
+  );
   return data.suggestions;
 }
 

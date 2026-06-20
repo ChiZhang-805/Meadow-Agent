@@ -20,11 +20,11 @@ async def create_realtime_token(
     settings: Settings = Depends(get_settings),
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
 ) -> dict:
-    openai_api_key = runtime_secrets.get_openai_api_key(settings)
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
+    openai_api_key = runtime_secrets.get_openai_api_key(settings, user_id=user_id)
     if not is_configured_secret(openai_api_key):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY is not configured")
 
-    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
     headers = {
         "Authorization": f"Bearer {openai_api_key}",
         "Content-Type": "application/json",

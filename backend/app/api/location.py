@@ -77,10 +77,12 @@ class SaveAddressRequest(BaseModel):
 @router.post("/amap/address_suggestions")
 async def get_amap_address_suggestions(
     payload: AddressSuggestRequest,
+    x_user_id: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
     runtime_secrets: RuntimeSecrets = Depends(get_runtime_secrets),
 ) -> dict[str, Any]:
-    amap_api_key = runtime_secrets.get_amap_api_key(settings)
+    user_id = (x_user_id.strip() if x_user_id else "") or settings.demo_user_id
+    amap_api_key = runtime_secrets.get_amap_api_key(settings, user_id=user_id)
     if not amap_api_key:
         raise HTTPException(status_code=500, detail="AMAP_API_KEY is not configured")
 

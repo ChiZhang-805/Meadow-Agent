@@ -56,7 +56,6 @@ export function ConfigSidebar({ open, userId, onClose }: ConfigSidebarProps) {
   const hasOpenAIKeyInput = openAIKey.trim().length > 0;
   const hasAMapKeyInput = amapKey.trim().length > 0;
   const canSaveAnyKey = hasOpenAIKeyInput || hasAMapKeyInput;
-  const canEditSecrets = status?.app_env === "development";
 
   async function saveKeys() {
     setBusy(true);
@@ -68,14 +67,14 @@ export function ConfigSidebar({ open, userId, onClose }: ConfigSidebarProps) {
         if (openAIKey.trim().length < 20) {
           throw new Error("OpenAI API Key 太短");
         }
-        tasks.push(saveOpenAIKey(openAIKey));
+        tasks.push(saveOpenAIKey(openAIKey, userId));
       }
 
       if (hasAMapKeyInput) {
         if (amapKey.trim().length < 6) {
           throw new Error("高德地图 API Key 太短");
         }
-        tasks.push(saveAMapKey(amapKey));
+        tasks.push(saveAMapKey(amapKey, userId));
       }
 
       await Promise.all(tasks);
@@ -100,6 +99,7 @@ export function ConfigSidebar({ open, userId, onClose }: ConfigSidebarProps) {
     setMessage("");
     try {
       const suggestions = await getAddressSuggestions({
+        user_id: userId,
         query,
         city: addressCity.trim() || undefined
       });
@@ -148,32 +148,30 @@ export function ConfigSidebar({ open, userId, onClose }: ConfigSidebarProps) {
           </button>
         </header>
 
-        {canEditSecrets ? (
-          <section className="secret-editor" aria-label="API Key">
-            <SecretInput
-              id="openai-key-input"
-              label="OpenAI API Key"
-              placeholder="sk-..."
-              value={openAIKey}
-              visible={showOpenAIKey}
-              onChange={setOpenAIKey}
-              onToggleVisible={() => setShowOpenAIKey((value) => !value)}
-            />
-            <SecretInput
-              id="amap-key-input"
-              label="高德地图 API Key"
-              placeholder="AMap Web服务 Key"
-              value={amapKey}
-              visible={showAMapKey}
-              onChange={setAMapKey}
-              onToggleVisible={() => setShowAMapKey((value) => !value)}
-            />
-            <button className="save-secret-button" disabled={busy || !canSaveAnyKey} onClick={saveKeys}>
-              <Save aria-hidden="true" size={24} />
-              保存 Key
-            </button>
-          </section>
-        ) : null}
+        <section className="secret-editor" aria-label="API Key">
+          <SecretInput
+            id="openai-key-input"
+            label="OpenAI API Key"
+            placeholder="sk-..."
+            value={openAIKey}
+            visible={showOpenAIKey}
+            onChange={setOpenAIKey}
+            onToggleVisible={() => setShowOpenAIKey((value) => !value)}
+          />
+          <SecretInput
+            id="amap-key-input"
+            label="高德地图 API Key"
+            placeholder="AMap Web服务 Key"
+            value={amapKey}
+            visible={showAMapKey}
+            onChange={setAMapKey}
+            onToggleVisible={() => setShowAMapKey((value) => !value)}
+          />
+          <button className="save-secret-button" disabled={busy || !canSaveAnyKey} onClick={saveKeys}>
+            <Save aria-hidden="true" size={24} />
+            保存 Key
+          </button>
+        </section>
 
         <section className="address-editor" aria-label="收货地址">
           <label htmlFor="address-query-input">
