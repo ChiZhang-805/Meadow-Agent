@@ -5,15 +5,30 @@ import {
   type NormalizedLandmark
 } from "@mediapipe/tasks-vision";
 
-export async function loadFaceLandmarker(modelAssetPath = "/models/face_landmarker.task"): Promise<FaceLandmarker> {
+const DEFAULT_FACE_LANDMARKER_MODEL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task";
+
+export async function loadFaceLandmarker(modelAssetPath = DEFAULT_FACE_LANDMARKER_MODEL): Promise<FaceLandmarker> {
   const vision = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm"
   );
 
+  try {
+    return await createFaceLandmarker(vision, modelAssetPath, "GPU");
+  } catch {
+    return createFaceLandmarker(vision, modelAssetPath, "CPU");
+  }
+}
+
+function createFaceLandmarker(
+  vision: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>,
+  modelAssetPath: string,
+  delegate: "GPU" | "CPU"
+) {
   return FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath,
-      delegate: "GPU"
+      delegate
     },
     runningMode: "VIDEO",
     numFaces: 1,

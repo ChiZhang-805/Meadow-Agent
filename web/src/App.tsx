@@ -15,7 +15,6 @@ import agentIconUrl from "./assets/agent_icon.png";
 import { createRealtimeEventHandler } from "./realtime/eventHandlers";
 import { startRealtimeSession, type RealtimeSessionHandle } from "./realtime/startRealtimeSession";
 import { handleRealtimeToolCall, sendToolOutput, summarizePreview } from "./realtime/toolBridge";
-import { useEmotionStore } from "./store/useEmotionStore";
 import { type GroceryStage, type OrderHistoryRecord, useGroceryStore } from "./store/useGroceryStore";
 import { useVoiceStore } from "./store/useVoiceStore";
 import { getSessionUserId } from "./user/sessionUser";
@@ -63,7 +62,6 @@ export default function App() {
     setError
   } = useVoiceStore();
 
-  const emotion = useEmotionStore((state) => state.current);
   const {
     options,
     currentPreview,
@@ -563,7 +561,7 @@ export default function App() {
           <Settings aria-hidden="true" size={28} />
           <span>配置</span>
         </button>
-        <EmotionBadge emotion={emotion} />
+        <EmotionBadge userId={userId} />
       </header>
 
       <div className="feature-modules">

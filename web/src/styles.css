@@ -565,19 +565,85 @@ button {
 
 .emotion-badge {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-width: 170px;
-  padding: 14px 16px;
+  gap: 14px;
+  min-width: 310px;
+  min-height: 70px;
+  padding: 10px 12px;
   border-radius: 8px;
   background: #ffffff;
   border: 2px solid #d7e4d9;
-  font-size: 20px;
 }
 
-.emotion-badge strong {
+.emotion-video {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.emotion-control-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.emotion-control-main span {
+  color: #4f645b;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.emotion-control-main strong {
   color: #197b59;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.emotion-control-main small {
+  color: #71827b;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.emotion-control button {
+  display: grid;
+  grid-template-columns: 22px auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #197b59;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.emotion-control button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.emotion-control-active {
+  background: #f4fbf6;
+  border-color: #b8dfc9;
+}
+
+.emotion-control-error {
+  border-color: #ffd3ca;
+  background: #fff8f6;
+}
+
+.emotion-control-error .emotion-control-main strong,
+.emotion-control-error .emotion-control-main small {
+  color: #923324;
 }
 
 .grocery-strip {
