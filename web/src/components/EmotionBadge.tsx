@@ -13,11 +13,11 @@ import { useEmotionStore } from "../store/useEmotionStore";
 
 const labelText: Record<EmotionResult["label"], string> = {
   happy: "开心",
-  sad_tendency: "可能低落",
-  angry_tendency: "可能着急",
-  surprised: "有点惊讶",
+  sad_tendency: "低落",
+  angry_tendency: "着急",
+  surprised: "惊讶",
   calm: "平静",
-  unknown: "未识别"
+  unknown: "未知"
 };
 
 const DETECTION_INTERVAL_MS = 260;
